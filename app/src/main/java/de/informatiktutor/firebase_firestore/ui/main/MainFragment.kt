@@ -7,10 +7,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ListView
+import android.widget.*
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import de.informatiktutor.firebase_firestore.R
@@ -29,6 +26,7 @@ class MainFragment : Fragment() {
 
     private lateinit var viewModel: MainViewModel
 
+    // TODO: Databinding verwenden
     private lateinit var vornameEditText: EditText
     private lateinit var nachnameEditText: EditText
     private lateinit var saveButton: Button
@@ -57,34 +55,9 @@ class MainFragment : Fragment() {
     }
 
     private fun onSaveClicked(view: View) {
-        val vorname = vornameEditText.text.toString()
-        val nachname = nachnameEditText.text.toString()
-
-        db.collection("users")
-            .add(User(vorname, nachname))
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
-                loadUsers()
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding document", e)
-            }
-    }
-
-    private fun loadUsers() {
-        db.collection("users")
-            .get()
-            .addOnSuccessListener { result ->
-                val data = result.toObjects(User::class.java)
-                usersList.clear()
-                usersList.addAll(data.map { user ->
-                    "${user.firstName} ${user.lastName}"
-                })
-                userListAdapter.notifyDataSetChanged()
-            }
-            .addOnFailureListener { exception ->
-                Log.w(TAG, "Error getting documents.", exception)
-            }
+        val firstName = vornameEditText.text.toString()
+        val lastName = nachnameEditText.text.toString()
+        viewModel.createUser(User(firstName, lastName))
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -95,7 +68,7 @@ class MainFragment : Fragment() {
         saveButton = view.findViewById(R.id.saveButton)
         allUsersList = view.findViewById(R.id.allUsersList)
 
-        datePickerButton = view.findViewById<Button>(R.id.datePickerButton)
+        datePickerButton = view.findViewById(R.id.datePickerButton)
         datePickerButton.setOnClickListener(this::showDatePickerDialog)
 
         viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
@@ -108,18 +81,39 @@ class MainFragment : Fragment() {
         allUsersList.adapter = userListAdapter
 
         // 2. Show database data in a list
-        loadUsers()
+        viewModel.usersLiveData.observe(viewLifecycleOwner) { users ->
+            usersList.clear()
+            usersList.addAll(users.map { user ->
+                "${user.firstName} ${user.lastName}"
+            })
+            userListAdapter.notifyDataSetChanged()
+        }
 
+        viewModel.loadUsers()
 
+        // Observer wird in onViewCreated erstellt, damit dieser nur einmal angelegt wird!
+        viewModel.userCreatedLiveData.observe(viewLifecycleOwner) { isSuccess ->
+            if (isSuccess) {
+                viewModel.loadUsers()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Konnte Nutzer nicht speichern!",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        /*
         // Create a new user with a first and last name
-//        val user = hashMapOf(
-//            "first" to "Ada",
-//            "last" to "Lovelace",
-//            "born" to 1815,
-//            "birth_place" to "Gummersbach"
-//        )
+        val user = hashMapOf(
+            "first" to "Ada",
+            "last" to "Lovelace",
+            "born" to 1815,
+            "birth_place" to "Gummersbach"
+        )
 
-        /*val user = User("Frank", "Maurer")
+        val user = User("Frank", "Maurer")
 
         // Add a new document with a generated ID
         db.collection("users")
@@ -129,7 +123,7 @@ class MainFragment : Fragment() {
             }
             .addOnFailureListener { e ->
                 Log.w(TAG, "Error adding document", e)
-            }*/
+            }
 
         db.collection("users")
             .get()
@@ -160,5 +154,6 @@ class MainFragment : Fragment() {
                 Log.w(TAG, "User: " + user.toString())
             }
             .addOnFailureListener { e -> Log.w(TAG, "Error updating document", e) }
+        */
     }
 }
