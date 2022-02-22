@@ -14,6 +14,7 @@ import android.widget.ListView
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import de.informatiktutor.firebase_firestore.R
+import de.informatiktutor.firebase_firestore.model.PickerDate
 import de.informatiktutor.firebase_firestore.model.User
 
 class MainFragment : Fragment() {
@@ -41,6 +42,18 @@ class MainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         return inflater.inflate(R.layout.main_fragment, container, false)
+    }
+
+    private lateinit var datePickerButton: Button
+    private var pickedDate: PickerDate? = null
+
+    private fun showDatePickerDialog(v: View) {
+        val newFragment = DatePickerFragment { date ->
+            pickedDate = date
+            datePickerButton.text = "${date.day}.${date.month + 1}.${date.year}"
+            Log.w(TAG, "User picked a date: $pickedDate")
+        }
+        newFragment.show(childFragmentManager, "datePicker")
     }
 
     private fun onSaveClicked(view: View) {
@@ -82,12 +95,16 @@ class MainFragment : Fragment() {
         saveButton = view.findViewById(R.id.saveButton)
         allUsersList = view.findViewById(R.id.allUsersList)
 
+        datePickerButton = view.findViewById<Button>(R.id.datePickerButton)
+        datePickerButton.setOnClickListener(this::showDatePickerDialog)
+
         viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
 
         // 1. Get user input on button click
         saveButton.setOnClickListener(this::onSaveClicked)
 
-        userListAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, usersList)
+        userListAdapter =
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, usersList)
         allUsersList.adapter = userListAdapter
 
         // 2. Show database data in a list
